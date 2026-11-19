@@ -77,7 +77,7 @@ int vp_locked(const vp_game_t *g)
 static void gen_obstacles(vp_game_t *g)
 {
     g->nobst = 0;
-    for (int tries = 0; g->nobst < 14 && tries < 400; tries++) {
+    for (int tries = 0; g->nobst < VP_NUM_OBST && tries < 400; tries++) {
         vp_obst_t o;
         o.kind = (uint8_t)(rnd(g) % 3u);
         o.x = rndf(g, -VP_ARENA + 20, VP_ARENA - 20);

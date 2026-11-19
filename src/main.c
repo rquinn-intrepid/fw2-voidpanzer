@@ -274,7 +274,7 @@ static void draw_world(const vp_game_t *g, uint32_t frame)
 }
 
 // ================================================================ HUD
-#define RAD_X 240
+#define RAD_X (FB_W - 40)     // upper right
 #define RAD_Y 38
 #define RAD_R 30
 #define RAD_RANGE 200.0f
@@ -291,12 +291,12 @@ static void draw_hud(const vp_game_t *g, bool locked, float sweep, bool red_warn
         seg2d(x, 32, x + 2, 27, K_GREEN, true); seg2d(x + 12, 32, x + 10, 27, K_GREEN, true);
         seg2d(x + 6, 27, x + 13, 25, K_GREEN, true);
     }
-    vtext(FB_W - 112, 6, 1.6f, K_GREEN, "MISSILES");
+    vtext(6, 38, 1.6f, K_GREEN, "MSL");                       // under SCORE and TANKS
     for (int i = 0; i < VP_MISSILES; i++) {
-        float x = FB_W - 104 + i * 22.0f;
+        float x = 44 + i * 20.0f;
         uint16_t c = i < g->missiles ? K_AMBER : K_DIM;
-        seg2d(x, 32, x + 14, 22, c, i < g->missiles);
-        seg2d(x + 14, 22, x + 10, 22, c, false); seg2d(x + 14, 22, x + 13, 26, c, false);
+        seg2d(x, 48, x + 14, 38, c, i < g->missiles);
+        seg2d(x + 14, 38, x + 10, 38, c, false); seg2d(x + 14, 38, x + 13, 42, c, false);
     }
     // Radar.
     for (int k = 0; k < 24; k++) {
@@ -547,7 +547,7 @@ int main(void)
         fw2_app_recovery_sleep_ms(50);
     }
     audio_setup();
-    DIAG("voidpanzer: v001 up, imu=%d agentio=%d\n", s_have_imu, agentio);
+    DIAG("voidpanzer: v002 up, imu=%d agentio=%d\n", s_have_imu, agentio);
 
     static vp_game_t g;
     uint32_t seed = 0x7A4Bu;

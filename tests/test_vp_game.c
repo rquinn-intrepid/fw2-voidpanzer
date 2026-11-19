@@ -36,7 +36,7 @@ static void test_world(void)
 {
     for (uint32_t seed = 1; seed < 200; seed++) {
         vp_game_t g; vp_new_game(&g, seed);
-        CHECK(g.nobst >= 8, "seed %u only %d obstacles", seed, g.nobst);
+        CHECK(g.nobst >= VP_NUM_OBST - 1, "seed %u only %d obstacles", seed, g.nobst);
         CHECK(!vp_blocked(&g, 0, 0, VP_TANK_R), "seed %u start blocked", seed);
         CHECK(g.lives == VP_LIVES && g.missiles == VP_MISSILES, "start stock");
     }
@@ -135,13 +135,25 @@ static void test_missiles(void)
     CHECK((g.events & VP_EV_EMPTY) && !(g.events & VP_EV_MISSILE), "empty rack");
 }
 
+// Let enemy 0 (at 0, 25, facing us) shoot until a shell lands; its aim has a
+// random error, so any single shot may miss. Returns true if we were hit.
+static bool shoot_until_hit(vp_game_t *g)
+{
+    int lives0 = g->lives;
+    for (int shot = 0; shot < 30 && g->lives == lives0; shot++) {
+        g->enemy[0].x = 0; g->enemy[0].z = 25; g->enemy[0].yaw = 3.14159f;
+        g->enemy[0].fire_cd = 0;
+        run(g, 60, k_idle);
+    }
+    return g->lives < lives0;
+}
+
 static void test_getting_hit(void)
 {
     vp_game_t g; empty_game(&g);
     g.missiles = 1;
-    place_enemy(&g, 0, 0, 40);
-    g.enemy[0].fire_cd = 0;                  // shoot now (it faces us)
-    run(&g, 100, k_idle);
+    place_enemy(&g, 0, 0, 25);
+    CHECK(shoot_until_hit(&g), "enemy never hit in 30 shots");
     CHECK(g.lives == VP_LIVES - 1, "hit costs a life (%d)", g.lives);
     CHECK(g.missiles == VP_MISSILES, "new tank gets a full rack");
     CHECK(g.invuln > 0 && g.hit_flash > -1, "grace period");
@@ -151,12 +163,10 @@ static void test_getting_hit(void)
     CHECK(vp_enemies_alive(&g) == 1, "enemies come back after the pause");
 
     g.lives = 1; g.invuln = 0;
-    place_enemy(&g, 0, 0, 40);
-    place_enemy(&g, 1, 0, -1000);   // keep the second slot out of the way
+    place_enemy(&g, 0, 0, 25);
     g.enemy[1].alive = false;
     g.spawn_t = 1e9f;
-    g.enemy[0].fire_cd = 0;
-    run(&g, 200, k_idle);
+    shoot_until_hit(&g);
     CHECK(g.phase == VP_GAMEOVER && g.lives == 0, "last life -> game over");
 }
 

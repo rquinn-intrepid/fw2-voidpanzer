@@ -39,3 +39,11 @@
 - Steering with a real turn or tilt, D-pad UP/DOWN and GREEN/YELLOW driving
   by a person, sound (not heard), LED colours, the eased enemy settings in
   play, frame rate under load, and the `RELEASE RED` warning.
+
+## v002 (same day, after first play-test)
+
+- Player asked for fewer obstacles (14 -> 7), the radar in the upper right,
+  and the missile rack under the score and tank counter. Checked on the board
+  by screenshot (battlefield, lock with `LOCK` at 0 deg / 71 m, game over).
+- Host test for being hit now lets the enemy fire until a shot lands, since
+  its aim error means any single shot may miss.

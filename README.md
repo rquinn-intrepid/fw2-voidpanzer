@@ -16,12 +16,11 @@ close, let a proximity missile do the rest.
 
 <table>
   <tr>
-    <td align="center"><img src="docs/images/enemy.png" width="320"><br><sub>Enemy tank among the obstacles</sub></td>
-    <td align="center"><img src="docs/images/battlefield.png" width="320"><br><sub>Radar, tanks left, missile rack</sub></td>
+    <td align="center"><img src="docs/images/battlefield.png" width="320"><br><sub>Score, tanks and missiles top left, radar top right</sub></td>
+    <td align="center"><img src="docs/images/game-over.png" width="320"><br><sub>Game over</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/images/calibrate.png" width="320"><br><sub>Setup: hold it how you will play</sub></td>
-    <td align="center"><img src="docs/images/game-over.png" width="320"><br><sub>Game over</sub></td>
+    <td align="center" colspan="2"><img src="docs/images/calibrate.png" width="320"><br><sub>Setup: hold it how you will play</sub></td>
   </tr>
 </table>
 
@@ -51,7 +50,7 @@ close, let a proximity missile do the rest.
 2. **Setup.** Hold the board the way you will play, keep still, press GREEN.
    Then turn or tilt it right, hold it, press GREEN. The game learns whether
    you steer by *turning* (gyro) or *tilting* (accelerometer).
-3. **Find them.** Enemy tanks show as red dots on the radar at the top; the
+3. **Find them.** Enemy tanks show as red dots on the radar in the top-right corner; the
    radar pings as the sweep passes one. Turn until the dot is straight ahead.
 4. **Lock and fire.** When an enemy is in the crosshairs the reticle turns
    white and shows `LOCK`. Tap RED.
@@ -60,6 +59,7 @@ close, let a proximity missile do the rest.
    within 12 m, so a near miss is still a kill. You get 4 per tank.
 
 - Each kill: **1000 points**. Over 3000 points, two enemies hunt you at once.
+- Seven obstacles per battlefield: cubes, pyramids and tall monoliths.
 - Obstacles stop your tank, enemy tanks and shells, so use them as cover.
 - Get hit and you lose a tank (3 in all): the screen flashes, you get a fresh
   tank with a full missile rack, and the enemies pull back for a moment.

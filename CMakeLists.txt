@@ -21,6 +21,6 @@ add_executable(voidpanzer src/main.c src/vp_game.c)
 target_link_libraries(voidpanzer PRIVATE freewili2_bsp)
 fw2_display_app(voidpanzer
     POWER_ZONES DISPLAY SENSORS AUDIO RGB_LEDS
-    VERSION 001
+    VERSION 002
     DESCRIPTION "VoidPanzer: wireframe tank battle - turn to steer, red cannon, gray proximity missiles"
     REPOSITORY "https://github.com/rquinn-intrepid/fw2-voidpanzer")

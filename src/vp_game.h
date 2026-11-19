@@ -35,6 +35,7 @@
 #define VP_LOCK_RANGE    160.0f
 
 #define VP_MAX_OBST      16
+#define VP_NUM_OBST      7       // obstacles per battlefield
 #define VP_MAX_ENEMIES   2
 #define VP_MAX_SHELLS    16
 #define VP_MAX_SHARDS    48
