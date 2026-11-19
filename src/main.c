@@ -374,9 +374,16 @@ static void imu_poll(float dt, bool learn_bias, bool learn_rot)
         if (learn_rot)  s_rot[i] += (w[i] - s_bias[i]) * dt;
     }
     if (s_turn_mode) {
-        float rate = 0;
-        for (int i = 0; i < 3; i++) rate += (w[i] - s_bias[i]) * s_k[i];
+        float rate = 0, mag = 0;
+        for (int i = 0; i < 3; i++) {
+            rate += (w[i] - s_bias[i]) * s_k[i];
+            mag += (w[i] - s_bias[i]) * (w[i] - s_bias[i]);
+        }
         if (fabsf(rate) > 0.8f) s_turn += rate * dt / RAD2DEG;
+        // Keep learning the gyro's resting offset whenever the board is still,
+        // so a small offset cannot integrate into a phantom turn.
+        if (mag < 1.5f * 1.5f)
+            for (int i = 0; i < 3; i++) s_bias[i] += 0.01f * (w[i] - s_bias[i]);
     }
 }
 static void cal_level(void) { memcpy(s_n, s_g, sizeof s_n); norm3(s_n); memset(s_rot, 0, sizeof s_rot); }
@@ -394,11 +401,15 @@ static void cal_right(void)
     float d = dot3(u, s_n);
     for (int i = 0; i < 3; i++) u[i] -= d * s_n[i];
     if (len3(u) < 0.15f) {
-        int best = 0;
-        for (int i = 1; i < 3; i++) if (fabsf(s_n[i]) < fabsf(s_n[best])) best = i;
-        float e[3] = { 0, 0, 0 }; e[best] = 1.0f; d = dot3(e, s_n);
+        // No clear gesture: steer by the board's left-right axis (accelerometer
+        // X runs across the screen; Y runs top to bottom, so tipping the board
+        // toward or away from you must not steer). Y only if X is near gravity.
+        float e[3] = { 1, 0, 0 };
+        if (fabsf(s_n[0]) > 0.8f) { e[0] = 0; e[1] = 1; }
+        d = dot3(e, s_n);
         for (int i = 0; i < 3; i++) u[i] = e[i] - d * s_n[i];
         s_mode_name = "TILT?";
+        DIAG("voidpanzer: no clear gesture, steering by board X axis\n");
     }
     norm3(u); memcpy(s_u, u, sizeof s_u);
 }
@@ -409,15 +420,40 @@ static float steer_rad(void)
     if (s_turn_mode) return s_turn;
     return atan2f(dot3(s_g, s_u), dot3(s_g, s_n));
 }
-// Turn input -1..1: centre deadzone, then proportional to the angle.
+// Steering: full turn at STEER_FULL; anything under STEER_DEAD of that does
+// nothing, then the turn rate rises linearly from zero to full.
+#define STEER_FULL (40.0f / RAD2DEG)
+#define STEER_DEAD 0.15f
+static float steer_raw(void)                  // -1..1 before the deadzone (for the gauge)
+{
+    float r = steer_rad() / STEER_FULL;
+    return r > 1 ? 1 : (r < -1 ? -1 : r);
+}
 static float steer_input(void)
 {
-    const float dead = 4.0f / RAD2DEG, full = 30.0f / RAD2DEG;
-    float a = steer_rad(), m = fabsf(a) - dead;
+    float r = steer_raw(), m = fabsf(r) - STEER_DEAD;
     if (m <= 0) return 0;
-    float t = m / (full - dead);
-    if (t > 1) t = 1;
-    return a > 0 ? t : -t;
+    float t = m / (1.0f - STEER_DEAD);
+    return r > 0 ? t : -t;
+}
+
+// Steering gauge above the button bar: the dim box is the 15% deadzone, the
+// marker is where the board's steering sits (white inside the deadzone,
+// green when it is turning the tank).
+static void draw_steer_gauge(void)
+{
+    const float cx = FB_W / 2, y = 286, half = 70;
+    seg2d(cx - half, y, cx + half, y, K_DIM, false);
+    seg2d(cx - half, y - 4, cx - half, y + 4, K_DIM, false);
+    seg2d(cx + half, y - 4, cx + half, y + 4, K_DIM, false);
+    float dz = STEER_DEAD * half;
+    seg2d(cx - dz, y - 5, cx + dz, y - 5, K_DIM, false);
+    seg2d(cx - dz, y + 5, cx + dz, y + 5, K_DIM, false);
+    seg2d(cx - dz, y - 5, cx - dz, y + 5, K_DIM, false);
+    seg2d(cx + dz, y - 5, cx + dz, y + 5, K_DIM, false);
+    float r = steer_raw(), mx = cx + r * half;
+    uint16_t c = steer_input() != 0.0f ? K_GREEN : K_WHITE;
+    seg2d(mx, y - 7, mx, y + 7, c, true);
 }
 
 // ================================================================ sound mixer
@@ -547,7 +583,7 @@ int main(void)
         fw2_app_recovery_sleep_ms(50);
     }
     audio_setup();
-    DIAG("voidpanzer: v002 up, imu=%d agentio=%d\n", s_have_imu, agentio);
+    DIAG("voidpanzer: v003 up, imu=%d agentio=%d\n", s_have_imu, agentio);
 
     static vp_game_t g;
     uint32_t seed = 0x7A4Bu;
@@ -672,6 +708,7 @@ int main(void)
                 } else {
                     button_bar(1);
                     draw_hud(&g, vp_locked(&g) >= 0, sweep, red_held_s > 3.0f, empty_t);
+                    draw_steer_gauge();
                 }
             }
             blit();

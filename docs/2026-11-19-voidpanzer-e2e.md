@@ -47,3 +47,21 @@
   by screenshot (battlefield, lock with `LOCK` at 0 deg / 71 m, game over).
 - Host test for being hit now lets the enemy fire until a shot lands, since
   its aim error means any single shot may miss.
+
+## v003 (2026-11-19)
+
+Player report: the tank stayed in a hard right turn without the board being
+rotated; under 15% of the steering range should do nothing.
+
+- Cause: when the setup gesture was too small, the fallback steering axis was
+  "the board axis most perpendicular to gravity", which on this board is the
+  top-to-bottom (Y) axis, so tipping the board toward or away from the player
+  read as a steady turn. The fallback is now the board's left-right (X) axis.
+- Gyro (turn) mode now keeps re-learning the gyro's resting offset whenever
+  the board is still, so a small offset cannot integrate into a turn.
+- Steering is full at 40 deg with a 15% deadzone (6 deg), then linear.
+- A steering gauge above the buttons shows the deadzone and the current
+  steering (white = inside the deadzone, green = turning).
+- Checked on the board: no-gesture setup logged "steering by board X axis";
+  steer stayed 0 and heading stayed 0 deg for 8 s; gauge renders centred.
+  Not checked: steering with a real tilt or turn.

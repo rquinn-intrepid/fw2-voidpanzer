@@ -30,7 +30,7 @@ close, let a proximity missile do the rest.
 
 | Input | Action |
 | --- | --- |
-| **Turn or tilt** the board left / right | Steer the tank (centre deadzone; the further you turn, the faster it turns) |
+| **Turn or tilt** the board left / right | Steer the tank. Full turn at 40°; the first 15% (6°) does nothing, so a steady hand drives straight. The gauge above the buttons shows where your steering sits |
 | **D-pad UP / DOWN** | Drive forward / reverse |
 | **D-pad LEFT / RIGHT** | Turn |
 | D-pad centre | Re-centre the steering |
