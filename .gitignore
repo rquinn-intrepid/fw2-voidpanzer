@@ -1,0 +1,9 @@
+build/
+build-tests/
+*.uf2
+*.elf
+*.bin
+*.png
+__pycache__/
+.venv/
+!docs/images/*.png
