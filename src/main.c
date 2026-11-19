@@ -464,7 +464,8 @@ static void draw_steer_gauge(void)
 static uint32_t s_snd[SND_N] __attribute__((aligned(SND_N * 4)));
 static int16_t  s_lo[SND_N], s_hi[SND_N];
 static bool  s_audio_ok, s_snd_on;
-static float s_e_fire, s_e_efire, s_e_msl, s_e_boom, s_e_ping, s_mix_lo, s_mix_hi, s_mix_sin;
+static float s_e_fire, s_e_efire, s_e_msl, s_e_boom, s_e_ping, s_e_hit;
+static float s_mix_lo, s_mix_hi, s_mix_sin, s_mix_buzz;
 static uint32_t s_quiet_ms;
 #define SND_MAX 0.24f                          // keep well inside the 0.5 W speaker
 
@@ -510,17 +511,26 @@ static void audio_update(float dt, uint32_t ev, bool driving, bool ping)
     if (ev & VP_EV_FIRE) s_e_fire = 1;
     if (ev & VP_EV_ENEMY_FIRE) s_e_efire = 1;
     if (ev & VP_EV_MISSILE) s_e_msl = 1;
-    if (ev & (VP_EV_KILL | VP_EV_BOOM | VP_EV_PLAYER_HIT)) s_e_boom = 1;
+    if (ev & (VP_EV_KILL | VP_EV_BOOM)) s_e_boom = 1;
+    if (ev & VP_EV_PLAYER_HIT) s_e_hit = 1;
     if (ping) s_e_ping = 1;
     s_e_fire = decay(s_e_fire, dt, 0.22f);  s_e_efire = decay(s_e_efire, dt, 0.3f);
     s_e_msl = decay(s_e_msl, dt, 0.7f);     s_e_boom = decay(s_e_boom, dt, 1.2f);
-    s_e_ping = decay(s_e_ping, dt, 0.09f);
+    s_e_ping = decay(s_e_ping, dt, 0.09f);  s_e_hit = decay(s_e_hit, dt, 0.9f);
 
-    float lo = (driving ? 0.05f : 0) + 0.12f * s_e_msl + 0.20f * s_e_boom * s_e_boom;
-    float hi = 0.20f * s_e_fire * s_e_fire + 0.08f * s_e_efire + 0.05f * s_e_msl + 0.06f * s_e_boom;
+    // Being hit: a crunch (both noises) plus a 125 Hz square-wave grind, loud
+    // enough that it wins the mix over everything else while it lasts.
+    float h = s_e_hit * s_e_hit;
+    // Cannon: bright crack plus a low thump. Missile: a whoosh that swells then
+    // fades. Enemy destroyed: sharp crack on top of a long rolling boom.
+    float f2 = s_e_fire * s_e_fire, b2 = s_e_boom * s_e_boom, sw = 4.0f * s_e_msl * (1.0f - s_e_msl);
+    float lo = (driving ? 0.05f : 0) + 0.10f * f2 + 0.08f * s_e_msl + 0.22f * b2 + 0.12f * h;
+    float hi = 0.20f * f2 + 0.08f * s_e_efire + 0.10f * sw + 0.04f * s_e_msl + 0.06f * s_e_boom +
+               0.14f * b2 * b2 + 0.10f * h;
     float sn = 0.05f * s_e_ping;
-    float tot = lo + hi + sn;
-    if (tot > SND_MAX) { float k = SND_MAX / tot; lo *= k; hi *= k; sn *= k; tot = SND_MAX; }
+    float bz = 0.10f * s_e_hit;
+    float tot = lo + hi + sn + bz;
+    if (tot > SND_MAX) { float k = SND_MAX / tot; lo *= k; hi *= k; sn *= k; bz *= k; tot = SND_MAX; }
 
     if (tot < 0.002f) {
         s_quiet_ms += (uint32_t)(dt * 1000);
@@ -528,25 +538,107 @@ static void audio_update(float dt, uint32_t ev, bool driving, bool ping)
             audio_i2s_duplex_play_stop();
             codec_nau88c10_speaker_low_power();
             s_snd_on = false;
-            s_mix_lo = s_mix_hi = s_mix_sin = 0;
+            s_mix_lo = s_mix_hi = s_mix_sin = s_mix_buzz = 0;
         }
         return;
     }
     s_quiet_ms = 0;
-    if (fabsf(lo - s_mix_lo) + fabsf(hi - s_mix_hi) + fabsf(sn - s_mix_sin) > 0.003f || !s_snd_on) {
-        s_mix_lo = lo; s_mix_hi = hi; s_mix_sin = sn;
+    if (fabsf(lo - s_mix_lo) + fabsf(hi - s_mix_hi) + fabsf(sn - s_mix_sin) + fabsf(bz - s_mix_buzz) > 0.003f ||
+        !s_snd_on) {
+        s_mix_lo = lo; s_mix_hi = hi; s_mix_sin = sn; s_mix_buzz = bz;
         static const int16_t k_sin16[16] = { 0, 12539, 23170, 30273, 32767, 30273, 23170, 12539,
                                              0, -12539, -23170, -30273, -32767, -30273, -23170, -12539 };
         for (int i = 0; i < SND_N; i++) {
-            float v = s_lo[i] * lo + s_hi[i] * hi + k_sin16[i & 15] * sn;
+            float v = s_lo[i] * lo + s_hi[i] * hi + k_sin16[i & 15] * sn +
+                      ((i & 64) ? 26000.0f : -26000.0f) * bz;   // 128-frame period = 125 Hz
             uint16_t u = (uint16_t)(int16_t)v;
             s_snd[i] = ((uint32_t)u << 16) | u;
         }
     }
     if (!s_snd_on) {
+        codec_nau88c10_dac_mute(false);        // low_power soft-muted the DAC; undo it first
         codec_nau88c10_set_output(CODEC_OUT_SPEAKER);
         audio_i2s_duplex_play_loop(s_snd, SND_N);
         s_snd_on = true;
+    }
+}
+
+// ================================================================ hit cracks
+// When the player is hit, jagged red cracks shoot out from an impact point
+// and flash twice: on 0-0.22 s, off, on again 0.36-0.62 s.
+#define CRK_MAX  180
+#define K_CRACK    BE(0xF800)   // pure red core
+#define K_CRACK_DK BE(0x6000)   // dark red edge
+#define K_CRACK_HI BE(0xFC10)   // hot pink centre line on the widest cracks
+static int16_t s_crk[CRK_MAX][5];   // x0, y0, x1, y1, width
+static int     s_crk_n;
+static float   s_crk_t = 99.0f;     // seconds since the last hit
+
+static uint32_t crk_u32(uint32_t *r) { *r ^= *r << 13; *r ^= *r >> 17; *r ^= *r << 5; return *r; }
+static float crk_f(uint32_t *r) { return (float)(crk_u32(r) & 0xFFFF) / 65535.0f; }
+
+static void crk_add(float x0, float y0, float x1, float y1, int w)
+{
+    if (s_crk_n >= CRK_MAX) return;
+    int16_t *c = s_crk[s_crk_n++];
+    c[0] = (int16_t)x0; c[1] = (int16_t)y0; c[2] = (int16_t)x1; c[3] = (int16_t)y1; c[4] = (int16_t)w;
+}
+
+static void crk_branch(uint32_t *r, float x, float y, float a, int segs, int w, int depth)
+{
+    for (int i = 0; i < segs && s_crk_n < CRK_MAX; i++) {
+        a += (crk_f(r) - 0.5f) * 0.7f;                   // mostly straight, sharp kinks
+        float len = 18.0f + crk_f(r) * 34.0f;
+        float nx = x + cosf(a) * len, ny = y + sinf(a) * len;
+        crk_add(x, y, nx, ny, w);
+        if (depth < 2 && crk_f(r) < 0.32f)               // fork off a thinner crack
+            crk_branch(r, nx, ny, a + (crk_f(r) < 0.5f ? -1.0f : 1.0f) * (0.5f + crk_f(r) * 0.7f),
+                       segs / 2 + 1, w > 1 ? w - 1 : 1, depth + 1);
+        x = nx; y = ny;
+        if (x < -10 || x > FB_W + 10 || y < -10 || y > FB_H + 10) break;
+        if (i == segs / 2 && w > 1) w--;                 // taper toward the tip
+    }
+}
+
+static void cracks_start(uint32_t seed)
+{
+    uint32_t r = seed | 1u;
+    s_crk_n = 0;
+    float cx = 120.0f + crk_f(&r) * 240.0f, cy = 70.0f + crk_f(&r) * 120.0f;
+    int n = 7 + (int)(crk_u32(&r) % 3);
+    for (int k = 0; k < n; k++) {
+        float a = (float)k * 6.2832f / (float)n + (crk_f(&r) - 0.5f) * 0.6f;
+        crk_branch(&r, cx, cy, a, 12, 3, 0);
+    }
+    for (int k = 0; k < 9; k++) {                        // shattered ring round the impact
+        float a0 = (float)k * 0.698f, a1 = a0 + 0.698f;
+        float r0 = 10.0f + crk_f(&r) * 8.0f, r1 = 10.0f + crk_f(&r) * 8.0f;
+        crk_add(cx + cosf(a0) * r0, cy + sinf(a0) * r0, cx + cosf(a1) * r1, cy + sinf(a1) * r1, 3);
+    }
+    s_crk_t = 0.0f;
+}
+
+static bool cracks_visible(void) { return s_crk_t < 0.22f || (s_crk_t > 0.36f && s_crk_t < 0.62f); }
+
+static void thick_seg(int x0, int y0, int x1, int y1, int w, uint16_t c)
+{
+    for (int o = -w; o <= w; o++) {
+        seg2d((float)(x0 + o), (float)y0, (float)(x1 + o), (float)y1, c, false);
+        seg2d((float)x0, (float)(y0 + o), (float)x1, (float)(y1 + o), c, false);
+    }
+}
+
+static void draw_cracks(void)
+{
+    if (!cracks_visible()) return;
+    for (int i = 0; i < s_crk_n; i++) {
+        int16_t *c = s_crk[i];
+        thick_seg(c[0], c[1], c[2], c[3], c[4], K_CRACK_DK);
+    }
+    for (int i = 0; i < s_crk_n; i++) {
+        int16_t *c = s_crk[i];
+        thick_seg(c[0], c[1], c[2], c[3], c[4] - 1, K_CRACK);
+        if (c[4] >= 3) seg2d(c[0], c[1], c[2], c[3], K_CRACK_HI, false);
     }
 }
 
@@ -583,7 +675,7 @@ int main(void)
         fw2_app_recovery_sleep_ms(50);
     }
     audio_setup();
-    DIAG("voidpanzer: v003 up, imu=%d agentio=%d\n", s_have_imu, agentio);
+    DIAG("voidpanzer: v004 up, imu=%d agentio=%d\n", s_have_imu, agentio);
 
     static vp_game_t g;
     uint32_t seed = 0x7A4Bu;
@@ -666,6 +758,8 @@ int main(void)
         audio_update(dt, ev_accum, driving, ping);
 
         // LEDs.
+        if (ev_accum & VP_EV_PLAYER_HIT) cracks_start((uint32_t)now ^ 0x5EEDu);
+        s_crk_t += dt;
         if (ev_accum & VP_EV_PLAYER_HIT)      { led_c = (rgb_t){ .r = 255 };           led_t = 0.5f; }
         else if (ev_accum & VP_EV_KILL)       { led_c = (rgb_t){ .g = 255 };           led_t = 0.4f; }
         else if (ev_accum & VP_EV_MISSILE)    { led_c = (rgb_t){ .r = 255, .g = 110 }; led_t = 0.25f; }
@@ -676,7 +770,7 @@ int main(void)
 
         if (now - t_draw > 33000) {
             t_draw = now; frame++;
-            bool flash = g.hit_flash > 0 && st == ST_PLAY;
+            bool flash = st == ST_PLAY && cracks_visible();
             uint16_t bg = flash ? K_HITBG : K_BLACK;
             for (int i = 0; i < FB_W * FB_H; i++) s_fb[i] = bg;
             if (st != ST_PLAY) {
@@ -710,6 +804,7 @@ int main(void)
                     draw_hud(&g, vp_locked(&g) >= 0, sweep, red_held_s > 3.0f, empty_t);
                     draw_steer_gauge();
                 }
+                draw_cracks();
             }
             blit();
         }

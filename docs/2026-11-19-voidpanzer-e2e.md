@@ -65,3 +65,24 @@ rotated; under 15% of the steering range should do nothing.
 - Checked on the board: no-gesture setup logged "steering by board X axis";
   steer stayed 0 and heading stayed 0 deg for 8 s; gauge renders centred.
   Not checked: steering with a real tilt or turn.
+
+## v004 (2026-11-19)
+
+Player report: you can't tell when you are hit; is any sound supported?
+
+- Sound bug: after any quiet spell the game powered the speaker path down with
+  codec_nau88c10_speaker_low_power(), which also soft-mutes the DAC, and the
+  restart only called codec_nau88c10_set_output(). The DAC stayed muted, so
+  after the first ~0.4 s of silence (that is, from the start) nothing played.
+  The restart now calls codec_nau88c10_dac_mute(false) first, as
+  wilibsp/docs/drivers/audio.md says to. Same bug and fix in moonhop.
+- Hit: jagged red cracks from a random impact point shoot across the screen and
+  flash twice (on 0-0.22 s, off, on 0.36-0.62 s) with the red background.
+  Hit sound is now its own: a crunch plus a 125 Hz square-wave grind, no longer
+  the same boom as a kill.
+- Cannon gained a low thump, the missile a swelling whoosh, the kill a sharp
+  crack over the boom.
+- Checked on the board: idle until an enemy hit me, the log shows HIT and the
+  cracks render (screenshot docs/images/hit.png, taken with a test build that
+  held the cracks for 5 s, because a screenshot takes 2-4 s). Not checked: I
+  can't hear the board, so the sounds are untested by ear.

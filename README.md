@@ -20,7 +20,8 @@ close, let a proximity missile do the rest.
     <td align="center"><img src="docs/images/game-over.png" width="320"><br><sub>Game over</sub></td>
   </tr>
   <tr>
-    <td align="center" colspan="2"><img src="docs/images/calibrate.png" width="320"><br><sub>Setup: hold it how you will play</sub></td>
+    <td align="center"><img src="docs/images/hit.png" width="320"><br><sub>You've been hit: the screen cracks and flashes red twice</sub></td>
+    <td align="center"><img src="docs/images/calibrate.png" width="320"><br><sub>Setup: hold it how you will play</sub></td>
   </tr>
 </table>
 
@@ -61,15 +62,20 @@ close, let a proximity missile do the rest.
 - Each kill: **1000 points**. Over 3000 points, two enemies hunt you at once.
 - Seven obstacles per battlefield: cubes, pyramids and tall monoliths.
 - Obstacles stop your tank, enemy tanks and shells, so use them as cover.
-- Get hit and you lose a tank (3 in all): the screen flashes, you get a fresh
+- Get hit and you lose a tank (3 in all): red cracks shatter across the screen and flash twice, a grinding crunch plays, the LEDs flash red, you get a fresh
   tank with a full missile rack, and the enemies pull back for a moment.
 - Game over when the last tank is gone; GREEN starts again.
 
 ## Sound and lights
 
-Engine rumble while driving, a sharp blast for the cannon, a whoosh for
-missiles, a radar ping and explosions, all synthesized on the board and kept
-well under the speaker's 0.5 W limit (the speaker powers down when quiet).
+- **Cannon:** a sharp crack with a low thump.
+- **Missile:** a whoosh that swells and fades.
+- **Enemy destroyed:** a crack on top of a long rolling boom.
+- **You are hit:** a loud crunch with a low grinding buzz.
+- Also an engine rumble while driving and a radar ping as the sweep passes an enemy.
+
+All sound is synthesized on the board and kept well under the speaker's 0.5 W
+limit; the speaker powers down when it is quiet.
 The RGB LEDs flash when you fire, glow orange for a missile, green for a kill
 and red when you are hit.
 
