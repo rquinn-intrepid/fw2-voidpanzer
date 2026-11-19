@@ -17,11 +17,14 @@ close, let a proximity missile do the rest.
 <table>
   <tr>
     <td align="center"><img src="docs/images/battlefield.png" width="320"><br><sub>Score, tanks and missiles top left, radar top right</sub></td>
-    <td align="center"><img src="docs/images/game-over.png" width="320"><br><sub>Game over</sub></td>
+    <td align="center"><img src="docs/images/kill.png" width="320"><br><sub>Direct hit: the enemy tank breaks into wireframe shards</sub></td>
   </tr>
   <tr>
     <td align="center"><img src="docs/images/hit.png" width="320"><br><sub>You've been hit: the screen cracks and flashes red twice</sub></td>
-    <td align="center"><img src="docs/images/calibrate.png" width="320"><br><sub>Setup: hold it how you will play</sub></td>
+    <td align="center"><img src="docs/images/game-over.png" width="320"><br><sub>Game over</sub></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><img src="docs/images/calibrate.png" width="320"><br><sub>Setup: hold it how you will play</sub></td>
   </tr>
 </table>
 
@@ -112,3 +115,5 @@ wilibsp/        FreeWili 2 board support, pinned submodule
 
 Built on [wilibsp](https://github.com/freewili/wilibsp). What was and was not
 checked on real hardware is in [docs/2026-11-19-voidpanzer-e2e.md](docs/2026-11-19-voidpanzer-e2e.md).
+
+<p align="center"><img src="docs/images/about.png" width="320" alt="About screen"></p>

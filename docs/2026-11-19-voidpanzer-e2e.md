@@ -86,3 +86,12 @@ Player report: you can't tell when you are hit; is any sound supported?
   cracks render (screenshot docs/images/hit.png, taken with a test build that
   held the cracks for 5 s, because a screenshot takes 2-4 s). Not checked: I
   can't hear the board, so the sounds are untested by ear.
+
+## Documentation screenshots (2026-11-19)
+
+- kill.png comes from a temporary build in which enemies hold fire and shards
+  last 5-6 s, because a screenshot takes 2-4 s. The kill itself is real: I aimed
+  with the D-pad, closed to 34 m and hit with the cannon (log: KILL score=1000).
+  An earlier try on that build killed with a gray missile at 81 m. The change
+  was reverted (git shows no change).
+- about.png: the shipped v004 build, PAGE held 5 s.
